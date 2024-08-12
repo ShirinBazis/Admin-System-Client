@@ -1,0 +1,19 @@
+.publishers-container {
+  padding: 70px 200px;
+  font-size: 17px;
+  font-style: normal;
+  color: #345666;
+}
+
+.btn {
+  margin-left: 10px;
+}
+
+.invalid {
+  border-color: red;
+}
+
+.error {
+  color: red;
+  font-size: 0.9em;
+}

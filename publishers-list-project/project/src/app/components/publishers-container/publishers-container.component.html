@@ -1,0 +1,65 @@
+<div class="publishers-container">
+  <div>
+    <button *ngIf="!isAddingPublisher && !isAddingDomain" (click)="toggleAddPublisher()">Add Publisher</button>
+    <div *ngIf="isAddingPublisher">
+      <input 
+      type="text" 
+      [(ngModel)]="newPublisherName" 
+      placeholder="Enter publisher name" 
+      (ngModelChange)="validatePublisher()" 
+      [class.invalid]="isPublisherExists && isAddingPublisher"
+      />
+      <button class="btn" (click)="addPublisher()">Save</button>
+      <button class="btn" (click)="cancelAddPublisher()">Cancel</button>
+    </div>
+    <div *ngIf="isPublisherExists && isAddingPublisher" class="error">This publisher is already exists</div>
+    
+    <button class="btn" *ngIf="!isAddingDomain && !isAddingPublisher" (click)="toggleAddDomain()">Add Domain</button>
+    <div *ngIf="isAddingDomain">
+      <div>Select a publisher:</div>
+      <select [(ngModel)]="selectedPublisher">
+        <option *ngFor="let publisher of data" [ngValue]="publisher">{{publisher.publisher}}</option>
+      </select>
+
+      <div>Domain:</div>
+      <input 
+        type="text" 
+        [(ngModel)]="newDomain" 
+        placeholder="Enter domain name" 
+        (ngModelChange)="validateDomain()" 
+        [class.invalid]="(isDomainExists || !isDomainValid) && isAddingDomain"
+      />
+      <div *ngIf="!isDomainValid && isAddingDomain" class="error">Invalid domain format</div>
+      <div *ngIf="isDomainExists && isAddingDomain" class="error">{{domainExistsMessage}}</div>
+      
+      <div>Desktop Ads:</div>
+      <input 
+        type="number" 
+        [(ngModel)]="newDesktopAds" 
+        placeholder="Enter desktop ads count" 
+        (ngModelChange)="validateDesktopAds()" 
+        [class.invalid]="!isDesktopAdsValid && isAddingDomain"
+        step="1"
+      />
+      <div *ngIf="!isDesktopAdsValid && isAddingDomain" class="error">Invalid desktop ads count (must be a non-negative integer)</div>
+      
+      <div>Mobile Ads:</div>
+      <input 
+        type="number" 
+        [(ngModel)]="newMobileAds" 
+        placeholder="Enter mobile ads count" 
+        (ngModelChange)="validateMobileAds()" 
+        [class.invalid]="!isMobileAdsValid && isAddingDomain"
+        step="1"
+      />
+      <div *ngIf="!isMobileAdsValid && isAddingDomain" class="error">Invalid mobile ads count (must be a non-negative integer)</div>
+
+      <button class="btn" (click)="addDomain()">Save</button>
+      <button class="btn" (click)="cancelAddDomain()">Cancel</button>
+    </div>
+  </div>
+
+  <div>
+    <app-publisher-card *ngFor="let publisher of data" [publisher]="publisher" [domainsMap]="domainsMap"></app-publisher-card>
+  </div>
+</div>
