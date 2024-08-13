@@ -1,7 +1,8 @@
 import { Component, Input } from '@angular/core';
-import { Domain } from "../publishers-container.component";
+import { ConnectToServer } from '../../../connect-to-server.component';
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
+import { Domain, PublishersContainerComponent } from '../publishers-container.component';
 
 @Component({
   selector: 'app-domain-card',
@@ -12,21 +13,19 @@ import { FormsModule } from "@angular/forms";
 })
 export class DomainCardComponent {
   @Input() domain!: Domain;
-  @Input() domainsMap!: { [key: string]: string };
   isEdit: boolean = false;
   inputDomain!: Domain;
-  domainPattern: RegExp = /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)\.(?:[A-Za-z0-9-]{1,63}(?<!-)\.)?[A-Za-z]{2,63}$/;
   isDomainValid: boolean = true;
   isDesktopAdsValid: boolean = true;
   isMobileAdsValid: boolean = true;
   isDomainExists: boolean = false;
   domainExistsMessage: string = '';
 
-  constructor() {
+  constructor(private connectToServer: ConnectToServer, private publishersContainer: PublishersContainerComponent) {
   }
 
   ngOnInit(): void {
-    this.inputDomain = JSON.parse(JSON.stringify(this.domain));
+    this.inputDomain = { ...this.domain };
   }
 
   toggleEdit() {
@@ -34,14 +33,8 @@ export class DomainCardComponent {
   }
 
   validateDomain() {
-    this.isDomainValid = this.domainPattern.test(this.inputDomain.domain.trim());
-    if (this.inputDomain.domain.trim() !== this.domain.domain && this.domainsMap.hasOwnProperty(this.inputDomain.domain.trim())) {
-      this.isDomainExists = true;
-      this.domainExistsMessage = `This domain is already configured on publisher: ${this.domainsMap[this.inputDomain.domain.trim()]}`;
-    } else {
-      this.isDomainExists = false;
-      this.domainExistsMessage = '';
-    }
+    this.isDomainValid = this.publishersContainer.domainPattern.test(this.inputDomain.domain.trim());
+    this.isDomainExists = false;
   }
 
   validateDesktopAds() {
@@ -58,17 +51,32 @@ export class DomainCardComponent {
     this.validateMobileAds();
 
     if (this.isDomainValid && this.isDesktopAdsValid && this.isMobileAdsValid) {
-      if (this.isDomainExists) {
-        this.domainExistsMessage = `This domain is already configured on publisher: ${this.domainsMap[this.inputDomain.domain.trim()]}`;
-      } else {
-        if (this.inputDomain.domain.trim() !== this.domain.domain) {
-          this.domainsMap[this.inputDomain.domain.trim()] = this.domainsMap[this.domain.domain.trim()];
-          delete this.domainsMap[this.domain.domain];
+      const newDomain = {
+        domain: this.inputDomain.domain.trim(),
+        desktopAds: this.inputDomain.desktopAds,
+        mobileAds: this.inputDomain.mobileAds,
+      };
+      console.log(newDomain.domain)
+      this.connectToServer.updateDomain(this.domain, newDomain).subscribe({
+        next: () => {
+          // update current domain data
+          this.domain = { ...newDomain };
+          this.isDomainExists = false;
+          this.toggleEdit()
+        },
+        error: (error) => {
+          // Domain allready exists
+          if (error.status === 409) {
+            this.domainExistsMessage = `This domain is already configured on publisher: ${error.error.publisher}`;
+            this.isDomainExists = true;
+          // There was no edit- then cancel
+          } else if (error.status === 400) {
+            this.cancelEditDomain();
+          } else {
+            console.error('Error updating domain:', error);
+          }
         }
-      this.domain = JSON.parse(JSON.stringify(this.inputDomain));
-      this.toggleEdit()
-      //this.domainExistsMessage = '';
-      }
+      });
     }
   }
 

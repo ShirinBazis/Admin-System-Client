@@ -4,7 +4,7 @@
   <div>Mobile Ads: {{domain.mobileAds}}</div>
 </div>
 <div>
-  <button *ngIf="!isEdit" (click)="toggleEdit()">Edit</button>
+  <button class="btn" id= "add-player" *ngIf="!isEdit" (click)="toggleEdit()">Edit</button>
 </div>
 <div class="form" *ngIf="isEdit">
   <div>Domain:</div>

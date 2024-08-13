@@ -1,7 +1,7 @@
 import {Component, Input} from '@angular/core';
-import {Publisher} from "../publishers-container.component";
 import {DomainCardComponent} from "../domain-card/domain-card.component";
 import {CommonModule} from "@angular/common";
+import { Publisher } from '../publishers-container.component';
 
 @Component({
   selector: 'app-publisher-card',
@@ -15,7 +15,6 @@ import {CommonModule} from "@angular/common";
 })
 export class PublisherCardComponent {
   @Input() publisher!: Publisher;
-  @Input() domainsMap!: { [key: string]: string };
 
   constructor() {
   }

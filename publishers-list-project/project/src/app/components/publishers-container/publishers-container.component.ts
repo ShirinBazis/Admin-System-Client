@@ -3,6 +3,7 @@ import { PublisherCardComponent } from "./publisher-card/publisher-card.componen
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 
+import { ConnectToServer } from '../../connect-to-server.component';
 
 export type Publisher = {
   publisher: string;
@@ -21,11 +22,12 @@ export type Domain = {
   imports: [
     PublisherCardComponent,
     CommonModule,
-    FormsModule
+    FormsModule,
   ],
   templateUrl: './publishers-container.component.html',
   styleUrl: './publishers-container.component.css'
 })
+
 export class PublishersContainerComponent implements OnInit {
   newPublisherName: string = '';
   newDomain: string = '';
@@ -34,65 +36,31 @@ export class PublishersContainerComponent implements OnInit {
   isAddingPublisher: boolean = false;
   isAddingDomain: boolean = false;
   selectedPublisher: Publisher | null = null;
-  // A domain doesn't start  or end with a hyphen, each label has 1-63 characters (except for the last that is minimum 2) and a a second-label is optionally
+  // A domain doesn't start or end with a hyphen, each label has 1-63 characters (except for the last that is minimum 2) and a a second-label is optionally
   domainPattern: RegExp = /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)\.(?:[A-Za-z0-9-]{1,63}(?<!-)\.)?[A-Za-z]{2,63}$/;
   isDomainValid: boolean = true;
   isDesktopAdsValid: boolean = true;
   isMobileAdsValid: boolean = true;
   isPublisherExists: boolean = false;
   isDomainExists: boolean = false;
-
-  domainsMap: { [key: string]: string } = {}; // Hash map for domain validation
-  publishersMap: { [key: string]: number } = {}; // Hash map for publisher validation
   domainExistsMessage: string = '';
+  data: Publisher[] = [];
 
-
-  constructor() {
+  constructor(private connectToServer: ConnectToServer) {
   }
-
-  data: Array<Publisher> = [
-    {
-      publisher: 'publisher 1',
-      domains: [
-        {
-          domain: "bla.com",
-          desktopAds: 5,
-          mobileAds: 3,
-        },
-        {
-          domain: "bla1.com",
-          desktopAds: 2,
-          mobileAds: 30,
-        }
-      ]
-    },
-    {
-      publisher: 'publisher 2',
-      domains: [
-        {
-          domain: "gar.com",
-          desktopAds: 0,
-          mobileAds: 4,
-        },
-        {
-          domain: "gar1.com",
-          desktopAds: 5,
-          mobileAds: 3,
-        }
-      ]
-    }
-  ]
 
   ngOnInit(): void {
-    this.initializeMaps();
+    this.fetchData();
   }
 
-  initializeMaps() {
-    this.data.forEach(publisher => {
-      this.publishersMap[publisher.publisher] = 1;
-      publisher.domains.forEach(domain => {
-        this.domainsMap[domain.domain] = publisher.publisher;
-      });
+  fetchData() {
+    this.connectToServer.fetchData().subscribe({
+      next: (response) => {
+        this.data = response;
+      },
+      error: (error) => {
+        console.error('Error fetching data:', error);
+      }
     });
   }
 
@@ -100,26 +68,33 @@ export class PublishersContainerComponent implements OnInit {
     this.isAddingPublisher = !this.isAddingPublisher;
   }
 
+  // After a "publisher exists" message, make it disappear when changing the input again
   validatePublisher() {
-    if (this.publishersMap.hasOwnProperty(this.newPublisherName.trim())) {
-      this.isPublisherExists = true;
-    } else {
-      this.isPublisherExists = false;
-    }
+    this.isPublisherExists = false;
   }
 
   addPublisher() {
     if (this.newPublisherName.trim()) {
-      this.validatePublisher();
-      if (!this.isPublisherExists) {
-        this.data.push({
-          publisher: this.newPublisherName.trim(),
-          domains: []
-        });
-        this.publishersMap[this.newPublisherName.trim()] = 1;
-        this.newPublisherName = '';
-        this.toggleAddPublisher();
-      }
+      const publisherData = {
+        publisher: this.newPublisherName.trim(),
+        domains: []
+      };
+      this.connectToServer.addPublisher(publisherData).subscribe({
+        next: () => {
+          // Update the data and reset
+          this.fetchData();
+          this.isPublisherExists = false;
+          this.newPublisherName = '';
+          this.toggleAddPublisher();
+        },
+        error: (error) => {
+          if (error.status === 409) {
+            this.isPublisherExists = true;
+          } else {
+            console.error('Error adding publisher:', error);
+          }
+        }
+      });
     }
   }
 
@@ -135,13 +110,7 @@ export class PublishersContainerComponent implements OnInit {
 
   validateDomain() {
     this.isDomainValid = this.domainPattern.test(this.newDomain.trim());
-    if (this.domainsMap.hasOwnProperty(this.newDomain.trim())) {
-      this.isDomainExists = true;
-      this.domainExistsMessage = `This domain is already configured on publisher: ${this.domainsMap[this.newDomain.trim()]}`;
-    } else {
-      this.isDomainExists = false;
-      this.domainExistsMessage = '';
-    }
+    this.isDomainExists = false;
   }
 
   validateDesktopAds() {
@@ -158,21 +127,33 @@ export class PublishersContainerComponent implements OnInit {
     this.validateMobileAds();
 
     if (this.newDomain.trim() && this.selectedPublisher && this.isDomainValid && this.isDesktopAdsValid && this.isMobileAdsValid) {
-      if (this.isDomainExists) {
-        this.domainExistsMessage = `This domain is already configured on publisher: ${this.domainsMap[this.newDomain.trim()]}`;
-      } else {
-        this.selectedPublisher.domains.push({
-          domain: this.newDomain.trim(),
-          desktopAds: parseInt(this.newDesktopAds),
-          mobileAds: parseInt(this.newMobileAds)
-        });
-        this.domainsMap[this.newDomain.trim()] = this.selectedPublisher.publisher;
-        this.newDomain = '';
-        this.newDesktopAds = '';
-        this.newMobileAds = '';
-        this.selectedPublisher = null;
-        this.toggleAddDomain();
-      }
+      const domainData = {
+        domain: this.newDomain.trim(),
+        desktopAds: parseInt(this.newDesktopAds),
+        mobileAds: parseInt(this.newMobileAds),
+        publisherName: this.selectedPublisher.publisher.trim()
+      };
+      console.log(domainData.publisherName)
+      this.connectToServer.addDomain(domainData).subscribe({
+        next: () => {
+          // Update the data and reset
+          this.fetchData();
+          this.newDomain = '';
+          this.newDesktopAds = '';
+          this.newMobileAds = '';
+          this.isDomainExists = false;
+          this.selectedPublisher = null;
+          this.toggleAddDomain();
+        },
+        error: (error) => {
+          if (error.status === 409) {
+            this.domainExistsMessage = `This domain is already configured on publisher: ${error.error.publisher}`;
+            this.isDomainExists = true;
+          } else {
+            console.error('Error adding domain:', error);
+          }
+        }
+      });
     }
   }
 

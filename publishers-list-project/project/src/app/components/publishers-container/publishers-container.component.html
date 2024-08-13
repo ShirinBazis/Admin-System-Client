@@ -1,6 +1,6 @@
 <div class="publishers-container">
   <div>
-    <button *ngIf="!isAddingPublisher && !isAddingDomain" (click)="toggleAddPublisher()">Add Publisher</button>
+    <button class="btn" id= "add-player" *ngIf="!isAddingPublisher && !isAddingDomain" (click)="toggleAddPublisher()">Add Publisher</button>
     <div *ngIf="isAddingPublisher">
       <input 
       type="text" 
@@ -60,6 +60,6 @@
   </div>
 
   <div>
-    <app-publisher-card *ngFor="let publisher of data" [publisher]="publisher" [domainsMap]="domainsMap"></app-publisher-card>
+    <app-publisher-card *ngFor="let publisher of data" [publisher]="publisher"></app-publisher-card>
   </div>
 </div>
